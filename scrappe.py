@@ -63,7 +63,7 @@ description = soup.find(class_="tdSimbolo" )
 code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
 urls = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://www.cohen.com.ar/Bursatil/Especie/AALD", "https://www.cohen.com.ar/Bursatil/Especie/AMX", "https://www.cohen.com.ar/Bursatil/Especie/GOLD"]
 code_list2 = ["tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
-
+species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ]
 
 def scrapper(url_list, codes_list):
     scrapped=[]
@@ -98,7 +98,7 @@ def scrapper(url_list, codes_list):
 
 #pprint.pprint(scrapper(urls, code_list)) 
 
-def actualize_scrapper(url_lits, codes_list):
+def actualize_scrapper(code_list):
     pointer = conector.cursor() 
     scrapped = "SELECT symbol FROM cedears"
     pointer.execute(scrapped)
@@ -109,10 +109,24 @@ def actualize_scrapper(url_lits, codes_list):
     urls_list = []
     for symbol in already_scrapped:
         urls_list.append("https://www.cohen.com.ar/Bursatil/Especie/"+symbol)
-    data = scrapper(urls_list,code_list2)
-    print(data)
-      
+    data = comma_dot_cleaner(scrapper(urls_list,code_list))
+    print("DATA: ",data)
+    for dat in data:
+        updater = "UPDATE cedears SET value = "+dat[2]+", variation = "+dat[3]+", lastoperation = "+dat[4]+", opening = "+dat[5]+", closing = "+dat[6]+", volume ="+dat[7]+", minimun = "+dat[8]+"maximun = "+dat[9]+" WHERE symbol = "+dat[0]+";"
+        pointer.execute(updater)
+        conector.commit()
     
+def specie_loader(specie):
+    
+    to_add = (str(specie),)
+    pointer = conector.cursor() 
+    adding = "INSERT INTO cedears (symbol) VALUES (?) ;"
+    pointer.execute(adding, to_add)
+    conector.commit()
+      
+def species_loader(species):   #temporal
+    for sp in species:
+        specie_loader(sp)    
     
 
 def comma_dot_cleaner(scrapped):
@@ -198,7 +212,7 @@ class Main_window(QMainWindow):
         self.table.setWordWrap(True)
         self.table.resizeColumnsToContents()
         
-        actualize_scrapper(urls, code_list)
+        actualize_scrapper(code_list)
         
         
         self.show()
@@ -226,11 +240,16 @@ class Main_window(QMainWindow):
 if __name__ == "__main__":
     conector = conection_sql()
     tableconstructor(conector)
-    db_charger(conector, comma_dot_cleaner(scrapper(urls,code_list)))
-    app = QtWidgets.QApplication(sys.argv)
+    #db_charger(conector, comma_dot_cleaner(scrapper(urls,code_list)))
+    #app = QtWidgets.QApplication(sys.argv)
+    #
+    #
+    #ui = Main_window()
     
+    #sys.exit(app.exec_())
     
-    ui = Main_window()
+    species_loader(species)
+    actualize_scrapper(code_list)
     
     
     
@@ -239,7 +258,7 @@ if __name__ == "__main__":
 
     
 
-    sys.exit(app.exec_())
+    
      
 
      
