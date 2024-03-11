@@ -64,13 +64,26 @@ code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",
 urls = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://www.cohen.com.ar/Bursatil/Especie/AALD", "https://www.cohen.com.ar/Bursatil/Especie/AMX", "https://www.cohen.com.ar/Bursatil/Especie/GOLD"]
 code_list2 = ["tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
 species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ]
+dollar_urls = "https://www.cronista.com/MercadosOnline/moneda.html?id=ARSCONT"
+dollar_code = "sell-value"
+
+def dollar_scrapper(dollarurl, dollarcodes):
+    
+    req = requests.get(dollarurl)
+    soupdollar = BeautifulSoup(req.text, 'html.parser')
+    dollar_value = soupdollar.find(class_ = dollarcodes).text
+    print("DOLAR", dollar_value)
+    
+    
+    
+        
 
 def scrapper(url_list, codes_list):
     scrapped=[]
     
     for ind_url in url_list:
         info = []
-        req =requests.get(ind_url)
+        req = requests.get(ind_url)
         soup = BeautifulSoup(req.text, 'html.parser')
         #inf = soup.find(class_="tdSimbolo").string
         #print(inf)
@@ -112,8 +125,9 @@ def actualize_scrapper(code_list):
     data = comma_dot_cleaner(scrapper(urls_list,code_list))
     print("DATA: ",data)
     for dat in data:
-        updater = "UPDATE cedears SET value = "+dat[2]+", variation = "+dat[3]+", lastoperation = "+dat[4]+", opening = "+dat[5]+", closing = "+dat[6]+", volume ="+dat[7]+", minimun = "+dat[8]+"maximun = "+dat[9]+" WHERE symbol = "+dat[0]+";"
-        pointer.execute(updater)
+        updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
+        setter = (dat[1], dat[2], dat[3], dat[4], dat[5],dat[6], dat[7], dat[8], dat[9], dat[0])
+        pointer.execute(updater, setter)
         conector.commit()
     
 def specie_loader(specie):
@@ -148,7 +162,7 @@ def comma_dot_cleaner(scrapped):
 
 def tableconstructor(conection):
     pointer = conection.cursor()
-    table = "CREATE TABLE IF NOT EXISTS cedears(symbol TEXT NOT NULL, description TEXT, value REAL, variation REAL,  lastopeartion TEXT, opening REAL, closing REAL, volume INTEGER, minimun REAL, maximun REAL)"
+    table = "CREATE TABLE IF NOT EXISTS cedears(symbol TEXT NOT NULL, description TEXT, value REAL, variation REAL,  lastoperation TEXT, opening REAL, closing REAL, volume INTEGER, minimun REAL, maximun REAL, amount INTEGER, total FLOAT)"
     pointer.execute(table)
     conection.commit()
     
@@ -198,9 +212,12 @@ class Main_window(QMainWindow):
         
         self.table = QTableWidget(self)
         self.table.setColumnCount(10)
-        self.table.setGeometry(10,30,800,700)
+        self.table.setGeometry(10,30,980,700)
         column_names = ["Symbol", "Description", "$", "Variation", "last operation", "opening $", "closing $", "Volume", "Min.$", "Max.$"]
         self.table.setHorizontalHeaderLabels(column_names)
+        
+        self.specie_loader = QPushButton(self)
+        self.specie_loader.setGeometry(QtCore.QRect())
         
         
         
@@ -239,7 +256,7 @@ class Main_window(QMainWindow):
 
 if __name__ == "__main__":
     conector = conection_sql()
-    tableconstructor(conector)
+    #tableconstructor(conector)
     #db_charger(conector, comma_dot_cleaner(scrapper(urls,code_list)))
     #app = QtWidgets.QApplication(sys.argv)
     #
@@ -248,9 +265,9 @@ if __name__ == "__main__":
     
     #sys.exit(app.exec_())
     
-    species_loader(species)
-    actualize_scrapper(code_list)
-    
+    #species_loader(species)
+    #actualize_scrapper(code_list)
+    dollar_scrapper(dollar_urls, dollar_code)
     
     
     
