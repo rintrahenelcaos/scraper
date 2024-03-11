@@ -73,6 +73,12 @@ def dollar_scrapper(dollarurl, dollarcodes):
     soupdollar = BeautifulSoup(req.text, 'html.parser')
     dollar_value = soupdollar.find(class_ = dollarcodes).text
     print("DOLAR", dollar_value)
+    dollar_ccl = dollar_value[1:]
+    dollar_ccl = dollar_ccl.replace(".","")
+    dollar_ccl = dollar_ccl.replace(",",".")
+    print(dollar_ccl)
+    
+    return dollar_ccl
     
     
     
@@ -111,7 +117,7 @@ def scrapper(url_list, codes_list):
 
 #pprint.pprint(scrapper(urls, code_list)) 
 
-def actualize_scrapper(code_list):
+def actualize_scrapper(code_list, dollar):
     pointer = conector.cursor() 
     scrapped = "SELECT symbol FROM cedears"
     pointer.execute(scrapped)
@@ -126,7 +132,7 @@ def actualize_scrapper(code_list):
     print("DATA: ",data)
     for dat in data:
         updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
-        setter = (dat[1], dat[2], dat[3], dat[4], dat[5],dat[6], dat[7], dat[8], dat[9], dat[0])
+        setter = (dat[1], float(dat[2])/dollar, dat[3], dat[4], float(dat[5])/dollar, float(dat[6])/dollar, dat[7], float(dat[8])/dollar, float(dat[9])/dollar, dat[0])
         pointer.execute(updater, setter)
         conector.commit()
     
@@ -212,25 +218,35 @@ class Main_window(QMainWindow):
         
         self.table = QTableWidget(self)
         self.table.setColumnCount(10)
-        self.table.setGeometry(10,30,980,700)
-        column_names = ["Symbol", "Description", "$", "Variation", "last operation", "opening $", "closing $", "Volume", "Min.$", "Max.$"]
+        self.table.setGeometry(10,50,980,700)
+        column_names = ["Symbol", "Description", "$", "Var.", "last op.", "opening $", "closing $", "Volume", "Min.$", "Max.$"]
         self.table.setHorizontalHeaderLabels(column_names)
         
+        self.dollar_label = QLabel(self)
+        self.dollar_label.setGeometry(QtCore.QRect(10, 10, 200, 30))
+        self.dollar_label.setText("CCL-Dollar: $")
+        
+        
+        
         self.specie_loader = QPushButton(self)
-        self.specie_loader.setGeometry(QtCore.QRect())
+        self.specie_loader.setGeometry(QtCore.QRect(300, 10, 200, 30))
+        
+        self.
         
         
         
         
         
         
-        self.table_loader()
+        
+        
             
         self.table.setWordWrap(True)
         self.table.resizeColumnsToContents()
-        
-        actualize_scrapper(code_list)
-        
+        dollar = dollar_scrapper(dollar_urls, dollar_code)
+        actualize_scrapper(code_list, float(dollar))
+        self.dollar_label.setText("CCL-Dollar: $"+str(dollar))
+        self.table_loader()
         
         self.show()
         
@@ -258,16 +274,16 @@ if __name__ == "__main__":
     conector = conection_sql()
     #tableconstructor(conector)
     #db_charger(conector, comma_dot_cleaner(scrapper(urls,code_list)))
-    #app = QtWidgets.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     #
     #
-    #ui = Main_window()
+    ui = Main_window()
     
-    #sys.exit(app.exec_())
+    sys.exit(app.exec_())
     
     #species_loader(species)
     #actualize_scrapper(code_list)
-    dollar_scrapper(dollar_urls, dollar_code)
+    
     
     
     
