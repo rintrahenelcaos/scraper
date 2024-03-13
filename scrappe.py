@@ -18,6 +18,8 @@ from PyQt5.QtWidgets import (
     QGraphicsScene,
     QFrame,
     QGridLayout,
+    QComboBox,
+    QSpinBox,
     
 )
 
@@ -67,6 +69,8 @@ species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ]
 dollar_urls = "https://www.cronista.com/MercadosOnline/moneda.html?id=ARSCONT"
 dollar_code = "sell-value"
 
+
+
 def dollar_scrapper(dollarurl, dollarcodes):
     
     req = requests.get(dollarurl)
@@ -80,7 +84,20 @@ def dollar_scrapper(dollarurl, dollarcodes):
     
     return dollar_ccl
     
+def cedears_list_scrapper():
     
+    cedears_complete_list = []
+    req = requests.get(url)
+    soup = BeautifulSoup(req.text, 'html.parser')
+    cedears = soup.findAll("option")
+    
+    for ind in cedears:
+        cedears_complete_list.append(ind.string)
+    cedears_complete_list = list(set(cedears_complete_list))
+    cedears_complete_list.sort()
+    cedears_complete_list.remove("Ninguna")
+    cedears_complete_list.insert(0, "")
+    return cedears_complete_list         
     
         
 
@@ -229,9 +246,18 @@ class Main_window(QMainWindow):
         
         
         self.specie_loader = QPushButton(self)
-        self.specie_loader.setGeometry(QtCore.QRect(300, 10, 200, 30))
+        self.specie_loader.setGeometry(QtCore.QRect(300, 10, 100, 30))
+        self.specie_loader.clicked.connect(lambda: self.to_add_specie())
         
-        self.
+        
+        self.specie_combobox = QComboBox(self)
+        self.specie_combobox.addItems(cedears_list_scrapper())
+        self.specie_combobox.setGeometry(QtCore.QRect(450,10, 200, 30))
+        
+        self.owned = QSpinBox(self)
+        self.owned.setGeometry(QtCore.QRect(650, 10, 100, 30))
+        
+        
         
         
         
@@ -264,6 +290,15 @@ class Main_window(QMainWindow):
                 self.table.setItem(row, column, QTableWidgetItem(str(individual)))
                 column += 1
             row += 1
+            
+    def to_add_specie(self):
+        print(self.specie_combobox.currentText())
+        print(self.owned.value())
+        specie_loader(self.specie_combobox.currentText())
+        actualize_scrapper(code_list, float(dollar_scrapper(dollar_urls, dollar_code)))
+        self.table_loader()
+        
+        
         
         
         
@@ -278,6 +313,8 @@ if __name__ == "__main__":
     #
     #
     ui = Main_window()
+    
+    print(cedears_list_scrapper())
     
     sys.exit(app.exec_())
     
