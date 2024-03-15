@@ -66,7 +66,7 @@ code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",
 urls = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://www.cohen.com.ar/Bursatil/Especie/AALD", "https://www.cohen.com.ar/Bursatil/Especie/AMX", "https://www.cohen.com.ar/Bursatil/Especie/GOLD"]
 code_list2 = ["tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
 species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ]
-dollar_urls = "https://www.cronista.com/MercadosOnline/moneda.html?id=ARSCONT"
+dollar_urls = "https://dolarhoy.com/cotizacion-dolar-ccl"
 dollar_code = "sell-value"
 
 
@@ -75,11 +75,11 @@ def dollar_scrapper(dollarurl, dollarcodes):
     
     req = requests.get(dollarurl)
     soupdollar = BeautifulSoup(req.text, 'html.parser')
-    dollar_value = soupdollar.find(class_ = dollarcodes).text
+    dollar_value = soupdollar.find_all(class_ = "value")[1].contents[0]
     print("DOLAR", dollar_value)
     dollar_ccl = dollar_value[1:]
-    dollar_ccl = dollar_ccl.replace(".","")
-    dollar_ccl = dollar_ccl.replace(",",".")
+    
+    
     print(dollar_ccl)
     
     return dollar_ccl
@@ -136,28 +136,42 @@ def scrapper(url_list, codes_list):
 
 def actualize_scrapper(code_list, dollar):
     pointer = conector.cursor() 
-    scrapped = "SELECT symbol FROM cedears"
+    scrapped = "SELECT symbol,amount FROM cedears"
     pointer.execute(scrapped)
     existing_scrapped = pointer.fetchall()
     already_scrapped = []
+    specie_amount = []
     for scrap in existing_scrapped:
         already_scrapped.append(scrap[0])
+        specie_amount.append(scrap[1])
+        update_total = "UPDATE cedears SET total = ? WHERE symbol = ?;"
+        setting = (scrap[1]*dollar, scrap[0])
+        pointer.execute(update_total, setting)
+        conector.commit()
+        
+    
     urls_list = []
+    
+    
     for symbol in already_scrapped:
         urls_list.append("https://www.cohen.com.ar/Bursatil/Especie/"+symbol)
     data = comma_dot_cleaner(scrapper(urls_list,code_list))
     print("DATA: ",data)
+    
     for dat in data:
         updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
         setter = (dat[1], float(dat[2])/dollar, dat[3], dat[4], float(dat[5])/dollar, float(dat[6])/dollar, dat[7], float(dat[8])/dollar, float(dat[9])/dollar, dat[0])
         pointer.execute(updater, setter)
         conector.commit()
+        update_total = "UPDATE cedears SET total = ? WHERE symbol = ?;"
+        setting = (dat[0], specie_amount)
+        
     
 def specie_loader(specie):
     
-    to_add = (str(specie),)
+    to_add = (specie)
     pointer = conector.cursor() 
-    adding = "INSERT INTO cedears (symbol) VALUES (?) ;"
+    adding = "INSERT INTO cedears (symbol, amount) VALUES (?, ?) ;"
     pointer.execute(adding, to_add)
     conector.commit()
       
@@ -217,6 +231,8 @@ def db_charger(conection, scrapped):
         pointer.execute(load, loadtuple)
         conection.commit()
 
+def mod_specie(): pass
+
 
 # interface
 class Main_window(QMainWindow):
@@ -234,10 +250,10 @@ class Main_window(QMainWindow):
         self.setWindowTitle("CEDEAr - scrapper")
         
         self.table = QTableWidget(self)
-        self.table.setColumnCount(10)
         self.table.setGeometry(10,50,980,700)
-        column_names = ["Symbol", "Description", "$", "Var.", "last op.", "opening $", "closing $", "Volume", "Min.$", "Max.$"]
-        self.table.setHorizontalHeaderLabels(column_names)
+        self.column_names = ["Symbol", "Description", "$", "Var.", "last op.", "opening $", "closing $", "Volume", "Min.$", "Max.$", "Am.Owned", "Holding", "Edit"]
+        self.table.setColumnCount(len(self.column_names))
+        self.table.setHorizontalHeaderLabels(self.column_names)
         
         self.dollar_label = QLabel(self)
         self.dollar_label.setGeometry(QtCore.QRect(10, 10, 200, 30))
@@ -289,14 +305,18 @@ class Main_window(QMainWindow):
             for individual in item:
                 self.table.setItem(row, column, QTableWidgetItem(str(individual)))
                 column += 1
+            
             row += 1
             
     def to_add_specie(self):
         print(self.specie_combobox.currentText())
         print(self.owned.value())
-        specie_loader(self.specie_combobox.currentText())
+        new_specie = (str(self.specie_combobox.currentText()), str(self.owned.value()))
+        specie_loader(new_specie)
         actualize_scrapper(code_list, float(dollar_scrapper(dollar_urls, dollar_code)))
         self.table_loader()
+        
+    
         
         
         
@@ -307,7 +327,7 @@ class Main_window(QMainWindow):
 
 if __name__ == "__main__":
     conector = conection_sql()
-    #tableconstructor(conector)
+    tableconstructor(conector)
     #db_charger(conector, comma_dot_cleaner(scrapper(urls,code_list)))
     app = QtWidgets.QApplication(sys.argv)
     #
