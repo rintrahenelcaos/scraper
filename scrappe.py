@@ -249,7 +249,7 @@ def db_charger(conection, scrapped):
         pointer.execute(load, loadtuple)
         conection.commit()
 
-def mod_specie(): print("clicked")
+def mod_specie(value): print(value)
 
 
 # interface
@@ -318,15 +318,20 @@ class Main_window(QMainWindow):
         pointer = conector.cursor()
         loader = "SELECT * FROM cedears"
         pointer.execute(loader)
-        items = pointer.fetchall()
-        self.table.setRowCount(len(items))
-        print(items)
+        data = pointer.fetchall()
+        self.table.setRowCount(len(data))
+        
         row = 0
-        for item in items:
+        for dat in data:
             column = 0
-            for individual in item:
+            for individual in dat:
                 self.table.setItem(row, column, QTableWidgetItem(str(individual)))
                 column += 1
+            delete_button = QPushButton(self.table,"del")
+            
+            
+            self.table.setCellWidget(row,12,delete_button)
+            delete_button.clicked.connect(self.delete_specie)
             
             row += 1
             
@@ -350,15 +355,37 @@ class Main_window(QMainWindow):
         self.table.editItem(item_to_mod)
         value = self.table.currentItem().text()
         
-        self.table.itemChanged.connect(lambda:mod_specie())
+        self.table.itemChanged.connect(self.to_change_amount)
         
-        """pointer = conector.cursor()
+    def to_change_amount(self, item):
+        
+        row = item.row()
+        value = self.table.item(row, 10).text()
+        specie = self.table.item(row, 0).text()
+        price = self.table.item(row, 2).text()
+            
+        pointer2 = conector.cursor()
         updater = "UPDATE cedears SET amount = ? WHERE symbol = ?"
         setter = (value, specie)
-        pointer.execute(updater, setter)
+        pointer2.execute(updater, setter)
         conector.commit()
         
-        setter = (float(value)*float(price)/float(self.dollar), specie)"""
+        updater2 = "UPDATE cedears SET total = ? WHERE symbol = ?"
+        setter = (float(value)*float(price), specie)
+        pointer2.execute(updater2,setter)
+        conector.commit()
+        
+        #actualize_scrapper(code_list, float(self.dollar))
+        
+        loader = "SELECT total FROM cedears WHERE symbol = ?;"
+        selector = (specie,)
+        pointer2.execute(loader, selector)
+        new_holding = pointer2.fetchall()[0][0]
+        item_holding = self.table.item(row,11)
+        item_holding.setText(str(new_holding))
+        
+    def delete_specie(self, clickedIndex):
+        print(clickedIndex.row())
         
         
         
