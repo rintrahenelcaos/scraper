@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QComboBox,
     QSpinBox,
+    QTableView
     
 )
 
@@ -30,9 +31,9 @@ import sys
 
 url = "https://www.cohen.com.ar/Bursatil/Especie/AAL"
 
-result = requests.get(url)
+#result = requests.get(url)
 
-soup = BeautifulSoup(result.text, 'html.parser')
+#soup = BeautifulSoup(result.text, 'html.parser')
 
 def conection_sql():
     global conector
@@ -54,12 +55,12 @@ print(table)
 information = []
 """symb=soup.h2
 symbol = symb.contents"""
-symbol = soup.find("h2").contents
+#symbol = soup.find("h2").contents
 #print(symbol)
-information.append(soup.find("h2").contents[0])
+#information.append(soup.find("h2").contents[0])
 #print(information)
 
-description = soup.find(class_="tdSimbolo" )
+#description = soup.find(class_="tdSimbolo" )
 #print(description.string)
 
 code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
@@ -143,11 +144,11 @@ def actualize_scrapper(code_list, dollar):
     specie_amount = []
     for scrap in existing_scrapped:
         already_scrapped.append(scrap[0])
-        specie_amount.append(scrap[1])
+        """specie_amount.append(scrap[1])
         update_total = "UPDATE cedears SET total = ? WHERE symbol = ?;"
         setting = (scrap[1]*dollar, scrap[0])
         pointer.execute(update_total, setting)
-        conector.commit()
+        conector.commit()"""
         
     
     urls_list = []
@@ -160,11 +161,28 @@ def actualize_scrapper(code_list, dollar):
     
     for dat in data:
         updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
-        setter = (dat[1], float(dat[2])/dollar, dat[3], dat[4], float(dat[5])/dollar, float(dat[6])/dollar, dat[7], float(dat[8])/dollar, float(dat[9])/dollar, dat[0])
+        setter = (dat[1], round(float(dat[2])/dollar, 2), dat[3], dat[4], round(float(dat[5])/dollar,2), round(float(dat[6])/dollar, 2), dat[7], round(float(dat[8])/dollar,2), round(float(dat[9])/dollar,2), dat[0])
         pointer.execute(updater, setter)
         conector.commit()
-        update_total = "UPDATE cedears SET total = ? WHERE symbol = ?;"
-        setting = (dat[0], specie_amount)
+        
+        update_total = "SELECT amount FROM cedears WHERE symbol = ?;"
+        pointer.execute(update_total, (dat[0],))
+        total_to_update = pointer.fetchall()[0][0]
+        updater = "UPDATE cedears SET total = ? WHERE symbol = ?"
+        setter = (round(total_to_update*float(dat[2])/dollar, 2), dat[0])
+        pointer.execute(updater, setter)
+        conector.commit()
+    
+    """for symbol in already_scrapped:
+        update_total = "SELECT amount FROM cedears WHERE symbol = ?;"
+        print(symbol)
+        pointer.execute(update_total, (symbol,))
+        total_to_update = pointer.fetchall()[0][0]
+        updater = "UPDATE cedears SET total = ? WHERE symbol = ?"
+        setter = (total_to_update*dollar, symbol)
+        pointer.execute(updater, setter)
+        conector.commit()"""
+        
         
     
 def specie_loader(specie):
@@ -231,7 +249,7 @@ def db_charger(conection, scrapped):
         pointer.execute(load, loadtuple)
         conection.commit()
 
-def mod_specie(): pass
+def mod_specie(): print("clicked")
 
 
 # interface
@@ -251,9 +269,12 @@ class Main_window(QMainWindow):
         
         self.table = QTableWidget(self)
         self.table.setGeometry(10,50,980,700)
-        self.column_names = ["Symbol", "Description", "$", "Var.", "last op.", "opening $", "closing $", "Volume", "Min.$", "Max.$", "Am.Owned", "Holding", "Edit"]
+        self.column_names = ["Symbol", "Description", "$", "Var.", "last op.", "opening $", "closing $", "Volume", "Min.$", "Max.$", "Am.Owned", "Holding $", "Edit"]
         self.table.setColumnCount(len(self.column_names))
         self.table.setHorizontalHeaderLabels(self.column_names)
+        
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.table.itemDoubleClicked.connect(self.mod_specie)
         
         self.dollar_label = QLabel(self)
         self.dollar_label.setGeometry(QtCore.QRect(10, 10, 200, 30))
@@ -284,12 +305,13 @@ class Main_window(QMainWindow):
         
             
         self.table.setWordWrap(True)
-        self.table.resizeColumnsToContents()
-        dollar = dollar_scrapper(dollar_urls, dollar_code)
-        actualize_scrapper(code_list, float(dollar))
-        self.dollar_label.setText("CCL-Dollar: $"+str(dollar))
-        self.table_loader()
         
+        self.dollar = dollar_scrapper(dollar_urls, dollar_code)
+        actualize_scrapper(code_list, float(self.dollar))
+        self.dollar_label.setText("CCL-Dollar: $"+str(self.dollar))
+        self.table_loader()
+        self.table.resizeColumnsToContents()
+        self.table.setColumnWidth(1, 350)
         self.show()
         
     def table_loader(self):
@@ -315,6 +337,30 @@ class Main_window(QMainWindow):
         specie_loader(new_specie)
         actualize_scrapper(code_list, float(dollar_scrapper(dollar_urls, dollar_code)))
         self.table_loader()
+        
+    def mod_specie(self, clickedIndex):
+        row = clickedIndex.row()
+        item_to_mod = self.table.item(row, 10)
+        specie = self.table.item(row, 0).text()
+        price = self.table.item(row, 2).text()
+        print(specie)
+        
+        self.table.setCurrentItem(item_to_mod)
+        previous_value = self.table.currentItem().text()
+        self.table.editItem(item_to_mod)
+        value = self.table.currentItem().text()
+        
+        self.table.itemChanged.connect(lambda:mod_specie())
+        
+        """pointer = conector.cursor()
+        updater = "UPDATE cedears SET amount = ? WHERE symbol = ?"
+        setter = (value, specie)
+        pointer.execute(updater, setter)
+        conector.commit()
+        
+        setter = (float(value)*float(price)/float(self.dollar), specie)"""
+        
+        
         
     
         
