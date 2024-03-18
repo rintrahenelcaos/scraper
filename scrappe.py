@@ -327,11 +327,11 @@ class Main_window(QMainWindow):
             for individual in dat:
                 self.table.setItem(row, column, QTableWidgetItem(str(individual)))
                 column += 1
-            delete_button = QPushButton(self.table,"del")
+            delete_button = QPushButton("del")
             
             
             self.table.setCellWidget(row,12,delete_button)
-            delete_button.clicked.connect(self.delete_specie)
+            #delete_button.clicked.connect(self.delete_specie)
             
             row += 1
             
