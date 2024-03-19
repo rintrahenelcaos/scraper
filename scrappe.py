@@ -25,7 +25,7 @@ from PyQt5.QtWidgets import (
 )
 
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QBrush, QPen, QMouseEvent, QHoverEvent, QFont, QColor,QPalette
-from PyQt5.QtCore import Qt, QLine, QPointF, QRectF, QLine, QEvent, QPropertyAnimation, pyqtProperty
+from PyQt5.QtCore import Qt, QLine, QPointF, QRectF, QLine, QEvent, QPropertyAnimation, pyqtProperty, QTime
 
 import sys
 
@@ -255,8 +255,6 @@ def mod_specie(value): print(value)
 # interface
 class Main_window(QMainWindow):
     
-    """Game by itself
-    """
     
     def __init__(self):
         super(Main_window, self).__init__()
@@ -294,6 +292,9 @@ class Main_window(QMainWindow):
         self.owned = QSpinBox(self)
         self.owned.setGeometry(QtCore.QRect(650, 10, 100, 30))
         
+        #self.infolabel = QLabel(self)
+        
+        
         
         
         
@@ -327,10 +328,10 @@ class Main_window(QMainWindow):
             for individual in dat:
                 self.table.setItem(row, column, QTableWidgetItem(str(individual)))
                 column += 1
-            delete_button = QPushButton("del")
+            delete_button = QPushButton("DEL.")
             
             
-            self.table.setCellWidget(row,column+1,delete_button)
+            self.table.setCellWidget(row,12,delete_button)
             delete_button.clicked.connect(self.delete_specie)
             
             row += 1
@@ -340,23 +341,24 @@ class Main_window(QMainWindow):
         print(self.owned.value())
         new_specie = str(self.specie_combobox.currentText()), str(self.owned.value())
         specie_loader(new_specie)
+        #self.infolabel.setText("Adding specie to db, please wait")
         actualize_scrapper(code_list, float(dollar_scrapper(dollar_urls, dollar_code)))
         pointer = conector.cursor()
         new_specie_symbol =  new_specie[0]
         updater = "SELECT * FROM cedears WHERE symbol = ?"
-        setter = (updater, new_specie_symbol)
-        pointer.execute(setter)
-        data = pointer.fetchall()
+        setter = (new_specie_symbol,)
+        pointer.execute(updater, (new_specie_symbol,))
+        data = pointer.fetchall()[0]
+        print(data)
         row = self.table.rowCount()
         self.table.insertRow(row)
         column =0
         for dat in data:
-            self.table.setItem(row, column, QTableWidgetItem(dat))
+            self.table.setItem(row, column, QTableWidgetItem(str(dat)))
             column += 1
-        delete_button = QPushButton("del")
+        delete_button = QPushButton("DEL.")
             
-            
-        self.table.setCellWidget(row,column+1,delete_button)
+        self.table.setCellWidget(row,12,delete_button)
         delete_button.clicked.connect(self.delete_specie)
         #self.table_loader()
         
@@ -443,13 +445,12 @@ class Main_window(QMainWindow):
 if __name__ == "__main__":
     conector = conection_sql()
     tableconstructor(conector)
-    #db_charger(conector, comma_dot_cleaner(scrapper(urls,code_list)))
+    
     app = QtWidgets.QApplication(sys.argv)
-    #
-    #
+    
     ui = Main_window()
     
-    print(cedears_list_scrapper())
+    
     
     sys.exit(app.exec_())
     
