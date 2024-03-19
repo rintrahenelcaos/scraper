@@ -274,7 +274,7 @@ class Main_window(QMainWindow):
         self.table.setHorizontalHeaderLabels(self.column_names)
         
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.table.itemDoubleClicked.connect(self.mod_specie)
+        self.table.itemDoubleClicked.connect(lambda: self.mod_specie(self.table.currentRow()))
         
         self.dollar_label = QLabel(self)
         self.dollar_label.setGeometry(QtCore.QRect(10, 10, 200, 30))
@@ -330,21 +330,54 @@ class Main_window(QMainWindow):
             delete_button = QPushButton("del")
             
             
-            self.table.setCellWidget(row,12,delete_button)
-            #delete_button.clicked.connect(self.delete_specie)
+            self.table.setCellWidget(row,column+1,delete_button)
+            delete_button.clicked.connect(self.delete_specie)
             
             row += 1
             
     def to_add_specie(self):
         print(self.specie_combobox.currentText())
         print(self.owned.value())
-        new_specie = (str(self.specie_combobox.currentText()), str(self.owned.value()))
+        new_specie = str(self.specie_combobox.currentText()), str(self.owned.value())
         specie_loader(new_specie)
         actualize_scrapper(code_list, float(dollar_scrapper(dollar_urls, dollar_code)))
-        self.table_loader()
+        pointer = conector.cursor()
+        new_specie_symbol =  new_specie[0]
+        updater = "SELECT * FROM cedears WHERE symbol = ?"
+        setter = (updater, new_specie_symbol)
+        pointer.execute(setter)
+        data = pointer.fetchall()
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        column =0
+        for dat in data:
+            self.table.setItem(row, column, QTableWidgetItem(dat))
+            column += 1
+        delete_button = QPushButton("del")
+            
+            
+        self.table.setCellWidget(row,column+1,delete_button)
+        delete_button.clicked.connect(self.delete_specie)
+        #self.table_loader()
         
     def mod_specie(self, clickedIndex):
+        
         row = clickedIndex.row()
+        item_to_mod = self.table.item(row, 10)
+        specie = self.table.item(row, 0).text()
+        price = self.table.item(row, 2).text()
+        print(specie)
+        
+        self.table.setCurrentItem(item_to_mod)
+        previous_value = self.table.currentItem().text()
+        self.table.editItem(item_to_mod)
+        value = self.table.currentItem().text()
+        
+        self.table.itemChanged.connect(self.to_change_amount)
+    
+    def mod_specie(self, row):
+        print(row)
+        #row = clickedIndex.row()
         item_to_mod = self.table.item(row, 10)
         specie = self.table.item(row, 0).text()
         price = self.table.item(row, 2).text()
@@ -384,8 +417,17 @@ class Main_window(QMainWindow):
         item_holding = self.table.item(row,11)
         item_holding.setText(str(new_holding))
         
-    def delete_specie(self, clickedIndex):
-        print(clickedIndex.row())
+    def delete_specie(self):
+        button = self.sender()
+        if button:
+            row = self.table.indexAt(button.pos()).row()
+            specie = self.table.item(row, 0).text()
+            deleter = "DELETE FROM cedears WHERE symbol = ?"
+            pointer3 = conector.cursor()
+            pointer3.execute(deleter, (specie,))
+            conector.commit()
+            self.table.removeRow(row)
+            
         
         
         
