@@ -3,7 +3,7 @@ import requests
 
 import sqlite3
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import (
     QMainWindow,
     QTableWidget,
@@ -14,8 +14,8 @@ from PyQt5.QtWidgets import (
     QSpinBox,
 )
 
-
-from PyQt5.QtCore import QThread, QObject, pyqtSignal
+from PyQt5.QtGui import QIcon, QPixmap, QPainter, QBrush, QPen, QMouseEvent, QHoverEvent, QFont, QColor,QPalette
+from PyQt5.QtCore import Qt, QTimer, QTime, QThread, QObject, pyqtSignal
 
 import sys
 
@@ -43,8 +43,7 @@ def conection_sql():
         conector: sqlite conector
     """
     global conector
-    conector = sqlite3.connect("cedearsdb.db", check_same_thread=False)
-    
+    conector = sqlite3.connect("cedearsdb.db")
     return conector
 
 
@@ -141,10 +140,10 @@ def actualize_scrapper(code_list, dollar):
 
     """
      
-    pointer_th = conector.cursor() 
+    pointer = conector.cursor() 
     scrapped = "SELECT symbol,amount FROM cedears"
-    pointer_th.execute(scrapped)
-    existing_scrapped = pointer_th.fetchall()
+    pointer.execute(scrapped)
+    existing_scrapped = pointer.fetchall()
     already_scrapped = []
     
     for scrap in existing_scrapped:
@@ -155,32 +154,8 @@ def actualize_scrapper(code_list, dollar):
     
     for symbol in already_scrapped:
         urls_list.append("https://www.cohen.com.ar/Bursatil/Especie/"+symbol)
-    print("urls_list: ", urls_list)
     data = comma_dot_cleaner(scrapper(urls_list,code_list))
-    print("DATA: ",data)
-    
-    for dat in data:
-        updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
-        setter = (dat[1], round(float(dat[2])/dollar, 2), dat[3], dat[4], round(float(dat[5])/dollar,2), round(float(dat[6])/dollar, 2), dat[7], round(float(dat[8])/dollar,2), round(float(dat[9])/dollar,2), dat[0])
-        pointer_th.execute(updater, setter)
-        conector.commit()
-        
-        update_total = "SELECT amount FROM cedears WHERE symbol = ?;"
-        pointer_th.execute(update_total, (dat[0],))
-        try:
-            total_to_update = pointer_th.fetchall()[0][0]
-            updater = "UPDATE cedears SET total = ? WHERE symbol = ?"
-            setter = (round(total_to_update*float(dat[2])/dollar, 2), dat[0])
-            pointer_th.execute(updater, setter)
-            conector.commit()
-        except: pass
-
-def partial_scrapper(new_specie, dollar, code_list):
-    
-    pointer = conector.cursor()
-    url = ["https://www.cohen.com.ar/Bursatil/Especie/"+new_specie]
-    
-    data = comma_dot_cleaner(scrapper(url, code_list))
+    #print("DATA: ",data)
     
     for dat in data:
         updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
@@ -195,16 +170,13 @@ def partial_scrapper(new_specie, dollar, code_list):
         setter = (round(total_to_update*float(dat[2])/dollar, 2), dat[0])
         pointer.execute(updater, setter)
         conector.commit()
-        
-        
     
-        
     
 def specie_loader(specie):
     """Loads new species to db
 
     Args:
-        specie (tuple): (identifying code of specie (str), amount owned (int))
+        specie (str): identifying code of specie - symbol
     """
     
     to_add = (specie)
@@ -213,9 +185,9 @@ def specie_loader(specie):
     pointer.execute(adding, to_add)
     conector.commit()
       
-"""def species_loader(species):   #temporal, used for testing
+def species_loader(species):   #temporal, used for testing
     for sp in species:
-        specie_loader(sp)   """ 
+        specie_loader(sp)    
     
 
 def comma_dot_cleaner(scrapped):
@@ -259,69 +231,15 @@ def total_holding():
 
 # implemented so that GUI doesn't freeze during updates
 
-           
 class Updater(QObject):
-    """ Thread Class
-
-    Args:
-        QObject (Qobject): Generic PyQt5 object
-    """
     
     updated = pyqtSignal()
-    progress = pyqtSignal()
-    retry = pyqtSignal()
-    failed = pyqtSignal()
+    progress = pyqtSignal(int)
     
     def update(self):
-        
-        timer = QtCore.QTimer(self) # Used to actualize data every 30 min
-        timer.setInterval(1800000)
-        timer.setInterval(30000)
-        timer.timeout.connect(self.timer_updater)
-        self.now = QtCore.QTime.currentTime()
-        print("initial load")
-        self.dollar = dollar_scrapper(dollar_urls)
-        actualize_scrapper(code_list, float(self.dollar))
-        self.updated.emit()
-        print("initial load finished")
-        timer.start()
-        
-    def timer_updater(self):
-        """Data updater triggerer
-        """
-        print(self.now.hour())
-        if self.now.hour() < 9 or self.now.hour() > 15: pass  # no updates due to stock schange hours
-        else:
-            self.progress.emit()
-            print("timer")
-            timerint = QtCore.QTimer(self)
-            timerint.singleShot(1000,self.info_actualizer)
-        
-    
-    def info_actualizer(self):
-        """Updates all data re-scrapping and restarting table
-        """
-        retries = 1
-        if retries < 6:   #prevents infinite loop
-            # re-scrapp # 
-            try:       
+        pass
 
-                self.dollar = dollar_scrapper(dollar_urls)
-                actualize_scrapper(code_list, float(self.dollar))
-                # restart ui
 
-                print("timerout")
-                self.updated.emit()
-            except: 
-                self.retry.emit()
-                timer_retry = QtCore.QTimer(self) # Delay before retrying scrapping after 5 sec.
-                timer_retry.singleShot(5000, self.info_actualizer)
-                retries += 1
-        else: self.failed.emit()
-        retries = 1
-            
-        
-        
 
 
 
@@ -340,7 +258,7 @@ class Main_window(QMainWindow):
         self.setWindowTitle("CEDEAr - Scrapper")
         
         self.table = QTableWidget(self)
-        self.table.setGeometry(10,50,980,670)
+        self.table.setGeometry(10,50,980,700)
         self.column_names = ["Symbol", "Description", "$", "Var.", "last op.", "opening $", "closing $", "Volume", "Min.$", "Max.$", "Owned", "Holding $", "Del."]
         self.table.setColumnCount(len(self.column_names))
         self.table.setHorizontalHeaderLabels(self.column_names)
@@ -356,52 +274,52 @@ class Main_window(QMainWindow):
         
         self.specie_loader = QPushButton(self)
         self.specie_loader.setText("Add specie")
-        self.specie_loader.setGeometry(QtCore.QRect(580, 10, 100, 30))
+        self.specie_loader.setGeometry(QtCore.QRect(300, 10, 100, 30))
         self.specie_loader.clicked.connect(lambda: self.to_add_specie())
-        self.specie_loader.setEnabled(False)
         
         
         self.specie_combobox = QComboBox(self)
         self.specie_combobox.addItems(cedears_list_scrapper())
-        self.specie_combobox.setGeometry(QtCore.QRect(700,10, 200, 30))
+        self.specie_combobox.setGeometry(QtCore.QRect(450,10, 200, 30))
         
         self.owned = QSpinBox(self)
-        self.owned.setGeometry(QtCore.QRect(900, 10, 90, 30))
+        self.owned.setGeometry(QtCore.QRect(650, 10, 100, 30))
         
         self.infolabel = QLabel(self)
         self.infolabel.setGeometry(QtCore.QRect(10,760,600,30))
-        self.infolabel.setText("Loading data, please wait")
+        self.infolabel.setText("To edit the amount owned, double click on the row")
         self.infolabel.setStyleSheet("color: red")
         
-        self.infolabel2 = QLabel(self)
-        self.infolabel2.setGeometry(QtCore.QRect(10,720,600,30))
-        self.infolabel2.setText("To edit the amount owned, double click on the row")
-        
-        
         self.total_hold = QLabel(self)
-        self.total_hold.setGeometry(QtCore.QRect(800,720,150,30))
+        self.total_hold.setGeometry(QtCore.QRect(800,760,150,30))
         
-        self.now = QtCore.QTime() 
+        self.now = QtCore.QTime() # Used to prevent updates in Stock Value off hours
         
-        # thread ##
         self.thread = QThread()
         self.timed_update = Updater()
         self.timed_update.moveToThread(self.thread)
         self.thread.started.connect(self.timed_update.update)
-        self.timed_update.updated.connect(lambda: self.infolabel.setText("Data last updated: "+QtCore.QTime.toString(QtCore.QTime.currentTime())))
-        self.timed_update.updated.connect(lambda: self.info_actualizer())
-        self.timed_update.progress.connect(lambda: self.infolabel.setText("Updating data"))
-        self.timed_update.failed.connect(lambda: self.infolabel.setText("Failed to stablish connection with internet data after 5 attemps"))
-        self.timed_update.retry.connect(lambda: self.infolabel2.setText("Failed connection, retrying"))
+        self.timed_update.updated.connect(self.thread.quit)
+        self.timed_update.updated.connect(self.timed_update.deleteLater)
+        self.timed_update.updated.connect(self.thread.deleteLater)
         
-        ######
+        
+        timer = QtCore.QTimer(self) # Used to actualize data every 30 min
+        timer.setInterval(1800000)
+        timer.timeout.connect(self.timer_updater)
         
         self.table.setWordWrap(True)
+        
+        self.dollar = dollar_scrapper(dollar_urls)
+        actualize_scrapper(code_list, float(self.dollar))
+        self.dollar_label.setText("CCL-Dollar: $"+str(self.dollar))
+        self.table_loader()
+        self.total_hold.setText("Total holding: U$S"+str(total_holding()))
         self.table.resizeColumnsToContents()
         self.table.setColumnWidth(1, 360)
         self.show()
-        self.thread.start()
-      
+        timer.start()
+        
     def table_loader(self):
         """Loads table from db
         """
@@ -428,23 +346,11 @@ class Main_window(QMainWindow):
     def to_add_specie(self):
         """Adds specie to db and table through adding specie
         """
-        already_scrapped = []
-        pointer = conector.cursor()
-        symbols = "SELECT symbol FROM cedears"
-        pointer.execute(symbols)
-        scrapped = pointer.fetchall()
         
-        for scrp in scrapped:
-            already_scrapped.append(scrp[0])
-            
         if self.specie_combobox.currentText() == "" :
-            self.infolabel2.setText("Must choose a symbol to add")
-            
-        elif str(self.specie_combobox.currentText()) in already_scrapped:
-            self.infolabel2.setText("Specie "+str(self.specie_combobox.currentText())+" already in db")
-                                                                                                
+            self.infolabel.setText("Must choose a symbol to add")
         else: 
-            self.infolabel2.setText("Adding specie, please wait")
+            self.infolabel.setText("Adding specie, please wait")
             timerint = QtCore.QTimer(self)
             timerint.singleShot(1000, self.adding_specie)
             
@@ -452,15 +358,13 @@ class Main_window(QMainWindow):
         """Operates adding specie
         """
         # Capture data #
-        
-        
         new_specie = str(self.specie_combobox.currentText()), str(self.owned.value())
         specie_loader(new_specie)
-        partial_scrapper(new_specie[0], float(dollar_scrapper(dollar_urls)), code_list)
-        
-        # from db #
+        actualize_scrapper(code_list, float(dollar_scrapper(dollar_urls)))
         pointer = conector.cursor()
         new_specie_symbol =  new_specie[0]
+        
+        # to db #
         updater = "SELECT * FROM cedears WHERE symbol = ?"
         pointer.execute(updater, (new_specie_symbol,))
         data = pointer.fetchall()[0]
@@ -478,8 +382,7 @@ class Main_window(QMainWindow):
         delete_button.clicked.connect(self.delete_specie)
         self.specie_combobox.setCurrentText("")
         self.owned.setValue(0)
-        self.total_hold.setText("Total holding: U$S"+str(total_holding()))
-        self.infolabel2.setText(new_specie_symbol+" added")
+        self.infolabel.setText(new_specie_symbol+" added")
      
     
     def mod_specie(self, row):
@@ -529,8 +432,6 @@ class Main_window(QMainWindow):
             new_holding = pointer2.fetchall()[0][0]
             item_holding = self.table.item(row,11)
             item_holding.setText(str(new_holding))
-            self.total_hold.setText("Total holding: U$S"+str(total_holding()))
-            self.infolabel2.setText(specie+" modified")
         except: pass
         
     def delete_specie(self):
@@ -545,25 +446,42 @@ class Main_window(QMainWindow):
             pointer3.execute(deleter, (specie,))
             conector.commit()
             self.table.removeRow(row)
-            self.total_hold.setText("Total holding: U$S"+str(total_holding()))
-            self.infolabel2.setText(specie+" removed")
-       
+            
+    def timer_updater(self):
+        """Data updater triggerer
+        """
+        if self.now.hour() < 9 or self.now.hour() > 15: pass
+        else:
+            self.infolabel.setText("Actualizing information, please wait")
+            print("timer")
+            timerint = QtCore.QTimer(self)
+            timerint.singleShot(1000,self.info_actualizer)
+        
     def info_actualizer(self):
         """Updates all data re-scrapping and restarting table
         """
-        # re-scrapp # 
-                
-        self.dollar = dollar_scrapper(dollar_urls)
-                
+        # re-scrapp #        
+        self.dollar = dollar_scrapper(dollar_urls, dollar_code)
+        actualize_scrapper(code_list, float(self.dollar))
+        
         # restart ui
         self.table.clearContents()
         self.dollar_label.setText("CCL-Dollar: $"+str(self.dollar))
         self.table_loader()
-        self.total_hold.setText("Total holding: U$S"+str(total_holding()))
-        self.specie_loader.setEnabled(True)
-        #self.infolabel.setText("Data updated")
-        print("info out")
+        self.infolabel.setText("Information actualized")
+        print("timerout")
         
+            
+        
+        
+        
+    
+        
+        
+        
+        
+        
+
 
 
 if __name__ == "__main__":
