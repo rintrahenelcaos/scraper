@@ -23,6 +23,7 @@ url = "https://www.cohen.com.ar/Bursatil/Especie/AAL"
 information = []
 
 code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
+code_list = ["detailSimbolo", "dteailDescripcionNombre", ""]
 urls = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://www.cohen.com.ar/Bursatil/Especie/AALD", "https://www.cohen.com.ar/Bursatil/Especie/AMX", "https://www.cohen.com.ar/Bursatil/Especie/GOLD"]
 code_list2 = ["tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
 species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ]
@@ -110,6 +111,7 @@ def scrapper(url_list, codes_list):
         soup = BeautifulSoup(req.text, 'html.parser')
         
         for code in codes_list:
+            print("code: ",code)
             try:
                 inf = soup.find(class_ = code).text
                 if inf.find("$") != -1:
@@ -251,7 +253,10 @@ def total_holding():
     pointer = conector.cursor()
     calculator = "SELECT SUM(total) FROM cedears;"
     pointer.execute(calculator)
-    total = round(pointer.fetchall()[0][0], 2)
+    try:
+        total = round(pointer.fetchall()[0][0], 2)
+    except:
+        total = 0
     
     return total
     
