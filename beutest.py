@@ -34,10 +34,17 @@ print(exit_data1)
 out_exit_data1 = exit_data1.find_all('span')
 print(out_exit_data1)
 outedlist = []
+outdict = {}
 for outed in out_exit_data1:
     outedlist.append(outed.text)
 print(outedlist)   
-for data in outing: 
+
+for li in range(0,len(outedlist),2):
+    print(li)
+    
+
+
+"""for data in outing: 
     exit_data = BeautifulSoup(str(data), 'html.parser')
     
     print(data)
@@ -51,4 +58,3 @@ for data in outing:
         print("data")
     #uni_data = unicode(data)
     #print((uni_data))"""
-    
