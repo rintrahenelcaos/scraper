@@ -23,7 +23,7 @@ url = "https://www.cohen.com.ar/Bursatil/Especie/AAL"
 information = []
 
 code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
-code_list = ["detailSimbolo", "dteailDescripcionNombre", ""]
+code_list = ['detailSimbolo', 'detailDescripcionNombre']
 urls = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://www.cohen.com.ar/Bursatil/Especie/AALD", "https://www.cohen.com.ar/Bursatil/Especie/AMX", "https://www.cohen.com.ar/Bursatil/Especie/GOLD"]
 code_list2 = ["tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
 species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ]
@@ -93,8 +93,8 @@ def cedears_list_scrapper():
     
         
 
-def scrapper(url_list, codes_list):
-    """Scrappes individual CEDEAr information from https://www.cohen.com.ar/Bursatil/Especie/
+def scrapper(url_list, codes_list):  #Old function outdated due to changes in the scrapped website
+    """Scrappes individual CEDEAR information from https://www.cohen.com.ar/Bursatil/Especie/
 
     Args:
         url_list (list): list of urls
@@ -133,6 +133,46 @@ def scrapper(url_list, codes_list):
         scrapped.append(info)
     return scrapped
 
+def scrapper(url_list, codes_list): #New function as of 10/6/2024
+    """Scrappes individual CEDEAR information from https://www.cohen.com.ar/Bursatil/Especie/
+
+    Args:
+        url_list (list): list of urls
+        codes_list (list): list of str used as codes to scrap
+
+    Returns:
+        list: list containing lists of information scrapped
+    """
+    scrapped=[]
+    
+    for ind_url in url_list:
+        info = []
+        req = requests.get(ind_url)
+        soup = BeautifulSoup(req.text, 'html.parser')
+        
+        for code in codes_list:
+            print("code: ",code)
+            try:
+                inf = soup.find(class_ = code).string
+                if inf.find("$") != -1:
+                    inf = inf[inf.rfind(" ")+1:]
+                elif inf.find("%") != -1:
+                    inf = inf[1:inf.rfind(" ")]
+                info.append(inf)
+            except:
+                inf = soup.find(id = code).text
+                #print(code, inf)
+                inf = inf[inf.rindex(" ")+1:]
+                if inf.isdigit():
+                    info.append(inf)
+                else:
+                    
+                    while inf[0].isalpha():
+                        inf = inf[1:]
+                    else: info.append(inf)
+        scrapped.append(info)
+        print(scrapped)
+    return scrapped
 
 def actualize_scrapper(code_list, dollar):
     """Connects scrapper to sqlite db prior to cleaning data

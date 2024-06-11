@@ -26,22 +26,28 @@ for tag in tags:
   
 print( class_list ) """
 outing = soup.find(class_ = 'detailDescripcion')
-
-
-print(outing)
+outtest = soup.find(class_="detailSimbolo")
+print(outtest.string)
+ottest2 = soup.find(class_="detailDescripcionNombre")
+print(ottest2.string)
+#print(outing)
 exit_data1 = BeautifulSoup(str(outing), 'html.parser')
-print(exit_data1)
+#print(exit_data1)
 out_exit_data1 = exit_data1.find_all('span')
-print(out_exit_data1)
+#print(out_exit_data1)
 outedlist = []
 outdict = {}
 for outed in out_exit_data1:
     outedlist.append(outed.text)
-print(outedlist)   
+#print(outedlist)   
 
 for li in range(0,len(outedlist),2):
-    print(li)
-    
+    #print(li)
+    outdict.update({outedlist[li]:outedlist[li+1]})
+    #print(outdict[outedlist[li]])
+for k in outdict:
+    print(k,": ",outdict[k])
+
 
 
 """for data in outing: 
