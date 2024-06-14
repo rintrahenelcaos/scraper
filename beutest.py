@@ -30,7 +30,10 @@ outtest = soup.find(class_="detailSimbolo")
 print(outtest.string)
 ottest2 = soup.find(class_="detailDescripcionNombre")
 print(ottest2.string)
-#print(outing)
+outcotiz = soup.find(class_ = "detailCotizacion")
+print(outcotiz.string)
+outvar = soup.find(class_ = "detailVariacion")
+print((outvar.text).strip())
 exit_data1 = BeautifulSoup(str(outing), 'html.parser')
 #print(exit_data1)
 out_exit_data1 = exit_data1.find_all('span')
@@ -47,6 +50,7 @@ for li in range(0,len(outedlist),2):
     #print(outdict[outedlist[li]])
 for k in outdict:
     print(k,": ",outdict[k])
+print(outdict.keys())
 
 
 

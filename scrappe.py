@@ -22,13 +22,14 @@ import sys
 url = "https://www.cohen.com.ar/Bursatil/Especie/AAL"
 information = []
 
-code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
-code_list = ['detailSimbolo', 'detailDescripcionNombre']
-urls = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://www.cohen.com.ar/Bursatil/Especie/AALD", "https://www.cohen.com.ar/Bursatil/Especie/AMX", "https://www.cohen.com.ar/Bursatil/Especie/GOLD"]
-code_list2 = ["tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
-species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ]
-dollar_urls = "https://dolarhoy.com/cotizacion-dolar-ccl"
-dollar_code = "sell-value"
+code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"] #outdated
+code_list = ['detailSimbolo', 'detailDescripcionNombre','detailCotizacion','detailVariacion'] #updated 6/13/2024
+code_list_keys = ['Apertura', 'Cierre Anterior', 'Volumen', 'Mínimo','Máximo'] # New codes for scrapping list
+urls = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://www.cohen.com.ar/Bursatil/Especie/AALD", "https://www.cohen.com.ar/Bursatil/Especie/AMX", "https://www.cohen.com.ar/Bursatil/Especie/GOLD"] #testing only
+#code_list2 = ["tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"]
+species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ] #testing only
+dollar_urls = "https://dolarhoy.com/cotizacion-dolar-ccl" # url to scrap CCL exchange rate
+dollar_code = "sell-value" #code to get scrapped CCL exchange rate
 
 
 
@@ -93,7 +94,7 @@ def cedears_list_scrapper():
     
         
 
-def scrapper(url_list, codes_list):  #Old function outdated due to changes in the scrapped website
+def scrapper_old(url_list, codes_list):  #Old function outdated due to changes in the scrapped website, name changed to prevent issues
     """Scrappes individual CEDEAR information from https://www.cohen.com.ar/Bursatil/Especie/
 
     Args:
@@ -150,28 +151,40 @@ def scrapper(url_list, codes_list): #New function as of 10/6/2024
         req = requests.get(ind_url)
         soup = BeautifulSoup(req.text, 'html.parser')
         
-        for code in codes_list:
-            print("code: ",code)
+        for code in codes_list:  # scrap from class
+            
             try:
                 inf = soup.find(class_ = code).string
-                if inf.find("$") != -1:
-                    inf = inf[inf.rfind(" ")+1:]
-                elif inf.find("%") != -1:
-                    inf = inf[1:inf.rfind(" ")]
+                inf = inf.replace("$","")
+                inf = inf.replace("%","")
+                inf = inf.strip()
                 info.append(inf)
             except:
-                inf = soup.find(id = code).text
-                #print(code, inf)
-                inf = inf[inf.rindex(" ")+1:]
-                if inf.isdigit():
-                    info.append(inf)
-                else:
-                    
-                    while inf[0].isalpha():
-                        inf = inf[1:]
-                    else: info.append(inf)
-        scrapped.append(info)
-        print(scrapped)
+                inf = soup.find(class_ = code).text
+                inf = inf.replace("$","")
+                inf = inf.replace("%","")
+                inf = inf.strip()
+                info.append(inf)
+            
+        
+        outing = soup.find(class_ = 'detailDescripcion')
+        exit_data1 = BeautifulSoup(str(outing), 'html.parser')
+        scrap_exit_data = exit_data1.find_all('span')
+        outedlist = []
+        for outed in scrap_exit_data: # data scrapped from list
+            outedlist.append(outed.text)
+        scrap_dict = {}
+        for li in range(0,len(outedlist),2):
+            outedlist[li+1] = outedlist[li+1].replace("$ ","")
+            outedlist[li+1] = outedlist[li+1].replace("U$S ","")
+            scrap_dict.update({outedlist[li]:outedlist[li+1]})
+        
+        for key in code_list_keys:
+            print(key,": ",scrap_dict[key])
+            info.append(scrap_dict[key])
+        scrapped.append(info)    
+            
+    
     return scrapped
 
 def actualize_scrapper(code_list, dollar):
@@ -202,8 +215,8 @@ def actualize_scrapper(code_list, dollar):
     print("DATA: ",data)
     
     for dat in data:
-        updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
-        setter = (dat[1], round(float(dat[2])/dollar, 2), dat[3], dat[4], round(float(dat[5])/dollar,2), round(float(dat[6])/dollar, 2), dat[7], round(float(dat[8])/dollar,2), round(float(dat[9])/dollar,2), dat[0])
+        updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
+        setter = (dat[1], round(float(dat[2])/dollar, 2), dat[3], round(float(dat[4])/dollar,2), round(float(dat[5])/dollar, 2), dat[6], round(float(dat[7])/dollar,2), round(float(dat[8])/dollar,2), dat[0])
         pointer_th.execute(updater, setter)
         conector.commit()
         
@@ -218,6 +231,13 @@ def actualize_scrapper(code_list, dollar):
         except: pass
 
 def partial_scrapper(new_specie, dollar, code_list):
+    """ Scrappes only one specie. Used for adding specie and preventing re-loading everything from db
+
+    Args:
+        new_specie (string): specie code as str
+        dollar (float): CCL dollar exchange rate. Scrapped automatically
+        code_list (list): codes to be scrapped. reference to class
+    """
     
     pointer = conector.cursor()
     url = ["https://www.cohen.com.ar/Bursatil/Especie/"+new_specie]
@@ -226,7 +246,8 @@ def partial_scrapper(new_specie, dollar, code_list):
     
     for dat in data:
         updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
-        setter = (dat[1], round(float(dat[2])/dollar, 2), dat[3], dat[4], round(float(dat[5])/dollar,2), round(float(dat[6])/dollar, 2), dat[7], round(float(dat[8])/dollar,2), round(float(dat[9])/dollar,2), dat[0])
+        updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
+        setter = (dat[1], round(float(dat[2])/dollar, 2), dat[3], round(float(dat[4])/dollar,2), round(float(dat[5])/dollar, 2), dat[6], round(float(dat[7])/dollar,2), round(float(dat[8])/dollar,2), dat[0])
         pointer.execute(updater, setter)
         conector.commit()
         
@@ -284,7 +305,7 @@ def tableconstructor(conection):
         conection (any): sqlite conector
     """
     pointer = conection.cursor()
-    table = "CREATE TABLE IF NOT EXISTS cedears(symbol TEXT NOT NULL, description TEXT, value REAL, variation REAL,  lastoperation TEXT, opening REAL, closing REAL, volume INTEGER, minimun REAL, maximun REAL, amount INTEGER, total FLOAT)"
+    table = "CREATE TABLE IF NOT EXISTS cedears(symbol TEXT NOT NULL, description TEXT, value REAL, variation REAL, opening REAL, closing REAL, volume INTEGER, minimun REAL, maximun REAL, amount INTEGER, total FLOAT)"
     pointer.execute(table)
     conection.commit()
 
@@ -321,7 +342,7 @@ class Updater(QObject):
         
         timer = QtCore.QTimer(self) # Used to actualize data every 30 min
         timer.setInterval(1800000)
-        timer.setInterval(30000)
+        #timer.setInterval(30000) testing only
         timer.timeout.connect(self.timer_updater)
         self.now = QtCore.QTime.currentTime()
         print("initial load")
@@ -335,7 +356,7 @@ class Updater(QObject):
         """Data updater triggerer
         """
         print(self.now.hour())
-        if self.now.hour() < 9 or self.now.hour() > 15: pass  # no updates due to stock schange hours
+        if self.now.hour() < 9 or self.now.hour() > 15: pass  # no updates due to stock exchange hours
         else:
             self.progress.emit()
             print("timer")
@@ -382,11 +403,11 @@ class Main_window(QMainWindow):
         self.setObjectName("MainWindow")
         self.resize(1000, 800)
         self.setWindowTitle("MainWindow")
-        self.setWindowTitle("CEDEAr - Scrapper")
+        self.setWindowTitle("CEDEAR - Scrapper")
         
         self.table = QTableWidget(self)
         self.table.setGeometry(10,50,980,670)
-        self.column_names = ["Symbol", "Description", "$", "Var.", "last op.", "opening $", "closing $", "Volume", "Min.$", "Max.$", "Owned", "Holding $", "Del."]
+        self.column_names = ["Symbol", "Description", "Price", "Variation", "opening $", "closing $", "Volume", "Minimun $", "Maximun $", "Owned", "Holding $", "Del."]
         self.table.setColumnCount(len(self.column_names))
         self.table.setHorizontalHeaderLabels(self.column_names)
         
@@ -462,10 +483,10 @@ class Main_window(QMainWindow):
             for individual in dat:
                 self.table.setItem(row, column, QTableWidgetItem(str(individual)))
                 column += 1
-            delete_button = QPushButton("DEL.")
+            delete_button = QPushButton("DEL.") # Delete button
             delete_button.setFixedWidth(40)        
             
-            self.table.setCellWidget(row,12,delete_button)
+            self.table.setCellWidget(row,11,delete_button)
             delete_button.clicked.connect(self.delete_specie)
             
             row += 1
