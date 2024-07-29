@@ -1,70 +1,82 @@
 from bs4 import BeautifulSoup
 import requests
+import certifi
+import pprint
 
 import sys
 
-url = "https://www.cohen.com.ar/Bursatil/Especie/AAL"
+url = "https://iol.invertironline.com/mercado/cotizaciones/argentina/cedears/todos" # tbody
+url2 = "https://www.rava.com/cotizaciones/cedears"  #cedears-p
+url3 = "https://open.bymadata.com.ar/#/dashboard"
+url4 = "https://bolsar.info/Cedears.php" #tbody
 information = []
 
+#response = requests.get(url, verify=certifi.where())
+#print(response.text)
+
 req = requests.get(url)
+#print(req.text)
 soup = BeautifulSoup(req.text, 'html.parser')
-class_list = set() 
-# get all tags 
-"""tags = {tag.name for tag in soup.find_all()} 
-  
-# iterate all tags 
-for tag in tags: 
-  
-    # find all element of tag 
-    for i in soup.find_all( tag ): 
-  
-        # if tag has attribute of class 
-        if i.has_attr( "class" ): 
-  
-            if len( i['class'] ) != 0: 
-                class_list.add(" ".join( i['class'])) 
-  
-print( class_list ) """
-outing = soup.find(class_ = 'detailDescripcion')
-outtest = soup.find(class_="detailSimbolo")
-print(outtest.string)
-ottest2 = soup.find(class_="detailDescripcionNombre")
-print(ottest2.string)
-outcotiz = soup.find(class_ = "detailCotizacion")
-print(outcotiz.string)
-outvar = soup.find(class_ = "detailVariacion")
-print((outvar.text).strip())
-exit_data1 = BeautifulSoup(str(outing), 'html.parser')
-#print(exit_data1)
-out_exit_data1 = exit_data1.find_all('span')
-#print(out_exit_data1)
-outedlist = []
-outdict = {}
-for outed in out_exit_data1:
-    outedlist.append(outed.text)
-#print(outedlist)   
+#print(soup)
+cedears = soup.tbody
 
-for li in range(0,len(outedlist),2):
-    #print(li)
-    outdict.update({outedlist[li]:outedlist[li+1]})
-    #print(outdict[outedlist[li]])
-for k in outdict:
-    print(k,": ",outdict[k])
-print(outdict.keys())
+#pprint.pprint(cedears)
 
+texto = cedears.find("td")
+texto2 = texto.i
+#print((texto.find("i")))
+print(texto2)
+print(texto2.parent.parent["data-tituloid"])
+attribute = texto2["title"]
+print(attribute)
 
-
-"""for data in outing: 
-    exit_data = BeautifulSoup(str(data), 'html.parser')
-    
-    print(data)
-    out_exit_data = exit_data.find('span')
-    print(str(exit_data), type(exit_data))
-    for dato in exit_data.text:
+cedears_list = (cedears.find_all("b"))
+cedears_cured_list = []
+cedears_data_tituloid = []
+excluded_cedears = []
+for cedear in cedears_list:
+    if cedear.string == None:
+        excluded_cedears.append(cedears_list.index(cedear))
+    else:
+        
+        #print(cedear)
+        #print((cedear.text).strip())
+        cedears_cured_list.append((cedear.text).strip())    # list of cedears
+        cedears_data_tituloid.append(cedear.parent.parent.parent["data-tituloid"])
         pass
-        #print(dato, type(dato))
-        #new_data = dato.text
-    if type(data) == "NavigableString":
-        print("data")
-    #uni_data = unicode(data)
-    #print((uni_data))"""
+    
+print(cedears_cured_list)
+#print(cedears_data_tituloid)
+#print(excluded_cedears)
+#print(cedears.find_all("b"))
+
+for cedear in cedears_list:
+    if( cedear.text).strip() == "AAL":
+        print(cedear.parent.parent.parent["data-tituloid"])
+
+
+    
+
+cedear_data_list = []
+
+for tituloid in cedears_data_tituloid:
+    raw_data = cedears.find(attrs={"data-tituloid": tituloid})
+    #print(len(raw_data))
+    info = []
+    info.append((raw_data.find("b").text).strip())
+    info.append(raw_data.i["title"])
+    info.append((raw_data.find(attrs = {"data-field":"UltimoPrecio"}).text.strip()))
+    info.append((raw_data.find(attrs = {"data-field":"Variacion"}).text.strip()))
+    info.append((raw_data.find(attrs = {"data-field":"Apertura"}).text.strip()))
+    info.append((raw_data.find(attrs = {"data-field":"UltimoCierre"}).text.strip()))
+    info.append((raw_data.find(attrs = {"data-field":"Minimo"}).text.strip()))
+    info.append((raw_data.find(attrs = {"data-field":"Maximo"}).text.strip()))
+    info.append((raw_data.find_all("td")[-2].text).strip())
+    cedear_data_list.append(info)
+
+print(cedear_data_list)
+    
+    
+
+
+    
