@@ -20,7 +20,7 @@ from PyQt5.QtCore import QThread, QObject, pyqtSignal
 import sys
 
 url = "https://www.cohen.com.ar/Bursatil/Especie/AAL"
-urls_to_get_cedears_list = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://iol.invertironline.com/mercado/cotizaciones/argentina/cedears/todos", "https://www.rava.com/cotizaciones/cedears"]
+urls_to_get_cedears_list = ["https://www.cohen.com.ar/Bursatil/Especie/AAL", "https://iol.invertironline.com/mercado/cotizaciones/argentina/cedears/todos", "https://www.bancopiano.com.ar/Inversiones/Cotizaciones/Cedears/"]
 information = []
 
 code_list = ["tdSimbolo","tdDescripcionNombre", "tdCotizEspecie", "tdVariacion",  "lblFechaHora","lblPrecioCierrer", "lblApertura", "lblVolumen", "lblMaximo", "lblMinimo"] #outdated
@@ -33,6 +33,10 @@ species = ["AAL", "AALD", "AMX", "GOLD", "BIOX" ] #testing only
 #### codes to be used with https://iol.invertironline.com/mercado/cotizaciones/argentina/cedears/todos ####
 
 codes_list_iol = ["UltimoPrecio", "Variacion", "Apertura", "UltimoCierre", "Minimo", "Maximo"]
+
+#### codes to be used with https://www.bancopiano.com.ar/Inversiones/Cotizaciones/Cedears/  ###
+
+codes_list_piano = []
 
 
 dollar_urls = "https://dolarhoy.com/cotizacion-dolar-ccl" # url to scrap CCL exchange rate
@@ -99,19 +103,35 @@ def cedears_list_scrapper():
         cedears_complete_list.sort()
         cedears_complete_list.remove("Ninguna")  # "Ninguna" is included in the middle of the list for some reason
         
-    except: # First security option 
-        req = requests.get(urls_to_get_cedears_list[1])
-        soup = BeautifulSoup(req.text, 'html.parser')  
-        cedears = soup.tbody  # get the complete table.  
-        
-        cedears_list = (cedears.find_all("b"))  # all species codes are contained in b>
-        
-        for cedear in cedears_list:
-            if cedear.string == None:  # eliminates EFTs from teh list as the are signaled a string
-                pass
+    except: # First safety option: uses iol web
+        try:
+            req = requests.get(urls_to_get_cedears_list[1])
+            soup = BeautifulSoup(req.text, 'html.parser')  
+            cedears = soup.tbody  # get the complete table.  
+
+            cedears_list = (cedears.find_all("b"))  # all species codes are contained in b>
+
+            for cedear in cedears_list:
+                if cedear.string == None:  # eliminates EFTs from teh list as the are signaled a string
+                    pass
+
+                else:
+                    cedears_complete_list.append((cedear.text).strip())    # list of stripped cedears 
                 
-            else:
-                cedears_complete_list.append((cedear.text).strip())    # list of stripped cedears 
+        except:  # Second safety option: uses piano web
+            req = requests.get(urls_to_get_cedears_list[2])
+            soup = BeautifulSoup(req.text, 'html.parser')  
+
+            cedears_list = soup.tbody.find_all("tr")
+
+            for cedear in cedears_list:
+                #print(ced)
+                for cedind in cedear.find_all("td"):
+                    #print(cedind)
+                    if "title" in cedind.attrs.keys():
+                        cedears_complete_list.append(cedind.text)
+        
+        
         
     cedears_complete_list.insert(0, "") # adds white first 
     return cedears_complete_list
@@ -224,7 +244,7 @@ def scrapper_iol(species_list, codes_list):   # added 7/28/2024 as a security op
     """
     scrapped = []
     
-    req = requests.get(urls_to_get_cedears_list[1])  
+    req = requests.get(urls_to_get_cedears_list[0])  
     soup = BeautifulSoup(req.text, 'html.parser') 
     cedear_soup = soup.tbody   # all data is concentrated in a table
     
@@ -250,7 +270,31 @@ def scrapper_iol(species_list, codes_list):   # added 7/28/2024 as a security op
     print(scrapped)
     
     return scrapped
-                
+
+def scrapper_piano(species_list, codes_list): 
+    
+    scrapped = []
+    
+    req = requests.get(urls_to_get_cedears_list[2])  
+    soup = BeautifulSoup(req.text, 'html.parser') 
+    cedear_list = soup.tbody.find_all("tr")
+    
+    for specie in species_list:
+        for cedear in cedear_list:
+            if cedear[0].text == specie:
+                info = []
+                info.append(cedear[0].text)
+                info.append("No data")
+                info.append((cedear[5].text).replace("%",""))
+                info.append(cedear[1].text)
+                info.append("0")
+                info.append(cedear[4].text)
+                info.append(cedear[3].text)
+                info.append(cedear[2].text)
+        scrapped.append(info)
+    
+    return scrapped
+                 
 
 def actualize_scrapper(code_list, codes_iol, dollar):
     """Connects scrapper to sqlite db prior to cleaning data
@@ -280,9 +324,13 @@ def actualize_scrapper(code_list, codes_iol, dollar):
     try:
         data = comma_dot_cleaner(scrapper_kohen(urls_list,code_list))
     except:
-        print(already_scrapped)
-        data = comma_dot_cleaner(scrapper_iol(already_scrapped, codes_iol))
-        print(data)
+        try:
+            print(already_scrapped)
+            data = comma_dot_cleaner(scrapper_iol(already_scrapped, codes_iol))
+            print(data)
+        except:
+            print(already_scrapped)
+            data = comma_dot_cleaner(scrapper_piano(already_scrapped, []))
     print("DATA: ",data)
     
     for dat in data:
