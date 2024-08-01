@@ -77,35 +77,35 @@ def dollar_scrapper(dollarurl):
     soupdollar = BeautifulSoup(req.text, 'html.parser')
     dollar_value = soupdollar.find_all(class_ = "value")[1].contents[0]
     
-    dollar_ccl = dollar_value[1:]
+    dollar_ccl = dollar_value[1:]  
     
     
     return dollar_ccl
     
 def cedears_list_scrapper():
-    """Scrappes full list of available CEDEArs in the market from any of the available urls
+    """Scrapes full list of available CEDEARs in the market from any of the available urls
 
     Returns:
         list: list of CEDEArs symbols/species
     """
     
     
-    cedears_complete_list = []
+    cedears_complete_list = []   # list to return
     
     try:   # Original function 
-        req = requests.get(urls_to_get_cedears_list[0])
+        req = requests.get(urls_to_get_cedears_list[0])   # first option to scrap from
         soup = BeautifulSoup(req.text, 'html.parser')
-        cedears = soup.findAll("option")
+        cedears = soup.findAll("option")   # all CEDEARs are identified as option
 
         for ind in cedears:
             cedears_complete_list.append(ind.string)
-        cedears_complete_list = list(set(cedears_complete_list))
+        cedears_complete_list = list(set(cedears_complete_list))  # eliminates duplicates
         cedears_complete_list.sort()
         cedears_complete_list.remove("Ninguna")  # "Ninguna" is included in the middle of the list for some reason
         
     except: # First safety option: uses iol web
         try:
-            req = requests.get(urls_to_get_cedears_list[1])
+            req = requests.get(urls_to_get_cedears_list[1])  # Second option to scrap from
             soup = BeautifulSoup(req.text, 'html.parser')  
             cedears = soup.tbody  # get the complete table.  
 
@@ -119,16 +119,16 @@ def cedears_list_scrapper():
                     cedears_complete_list.append((cedear.text).strip())    # list of stripped cedears 
                 
         except:  # Second safety option: uses piano web
-            req = requests.get(urls_to_get_cedears_list[2])
+            req = requests.get(urls_to_get_cedears_list[2])   # third option to scrap from // not recommended as EFTS are mixed and can generate issues when the sources are mixed
             soup = BeautifulSoup(req.text, 'html.parser')  
 
             cedears_list = soup.tbody.find_all("tr")
 
             for cedear in cedears_list:
-                #print(ced)
-                for cedind in cedear.find_all("td"):
-                    #print(cedind)
-                    if "title" in cedind.attrs.keys():
+                
+                for cedind in cedear.find_all("td"):    
+                    
+                    if "title" in cedind.attrs.keys():  # CEDEARs are marked in the table by a code
                         cedears_complete_list.append(cedind.text)
         
         
@@ -179,7 +179,7 @@ def scrapper_old(url_list, codes_list):  #Old function outdated due to changes i
         scrapped.append(info)
     return scrapped
 
-def scrapper_kohen(url_list, codes_list): #New function as of 10/6/2024
+def scrapper_kohen(url_list, codes_list): #New function as of 6/10/2024 /// Not working as of 7/31/2024
     """Scrappes individual CEDEAR information from https://www.cohen.com.ar/Bursatil/Especie/
 
     Args:
@@ -219,7 +219,7 @@ def scrapper_kohen(url_list, codes_list): #New function as of 10/6/2024
         for outed in scrap_exit_data: # data scrapped from list
             outedlist.append(outed.text)
         scrap_dict = {}
-        for li in range(0,len(outedlist),2):
+        for li in range(0,len(outedlist),2):  # clean the list of symbols
             outedlist[li+1] = outedlist[li+1].replace("$ ","")
             outedlist[li+1] = outedlist[li+1].replace("U$S ","")
             scrap_dict.update({outedlist[li]:outedlist[li+1]})
@@ -233,10 +233,10 @@ def scrapper_kohen(url_list, codes_list): #New function as of 10/6/2024
     return scrapped
 
 def scrapper_iol(species_list, codes_list):   # added 7/28/2024 as a security option in case the first url is down
-    """Scrappes individual CEDEAR information from https://iol.invertironline.com/mercado/cotizaciones/argentina/cedears/todos
+    """Scrapes individual CEDEAR information from https://iol.invertironline.com/mercado/cotizaciones/argentina/cedears/todos
 
     Args:
-        url_list (list): list of urls
+        species_list (list): list of species
         codes_list (list): list of str used as codes to scrap
 
     Returns:
@@ -244,7 +244,7 @@ def scrapper_iol(species_list, codes_list):   # added 7/28/2024 as a security op
     """
     scrapped = []
     
-    req = requests.get(urls_to_get_cedears_list[0])  
+    req = requests.get(urls_to_get_cedears_list[1])  
     soup = BeautifulSoup(req.text, 'html.parser') 
     cedear_soup = soup.tbody   # all data is concentrated in a table
     
@@ -271,15 +271,25 @@ def scrapper_iol(species_list, codes_list):   # added 7/28/2024 as a security op
     
     return scrapped
 
-def scrapper_piano(species_list, codes_list): 
+def scrapper_piano(species_list): 
+    """Scrapes individual CEDEAR information from https://www.bancopiano.com.ar/Inversiones/Cotizaciones/Cedears/ 
+    Not recommended because of missing data 
+
+    Args:
+        species_list (_type_): list of species
+
+    Returns:
+        list: list containing lists of information scrapped
+    """
     
     scrapped = []
     
-    req = requests.get(urls_to_get_cedears_list[2])  
-    soup = BeautifulSoup(req.text, 'html.parser') 
-    cedear_list = soup.tbody.find_all("tr")
+    req = requests.get(urls_to_get_cedears_list[2])  # 
+    soup = BeautifulSoup(req.text, 'html.parser')
+     
+    cedear_list = soup.tbody.find_all("tr") # scrap the table into workable pieces each representing a stock
     
-    for specie in species_list:
+    for specie in species_list:  # Data is presented in a sequential block with little differentiation betwen each item so it's scraped by list index
         for cedear in cedear_list:
             if cedear[0].text == specie:
                 info = []
@@ -297,7 +307,7 @@ def scrapper_piano(species_list, codes_list):
                  
 
 def actualize_scrapper(code_list, codes_iol, dollar):
-    """Connects scrapper to sqlite db prior to cleaning data
+    """Connects scraper to sqlite db prior to cleaning data
 
     Args:
         code_list (list): list of str used as codes to scrap, used for scrapper
@@ -306,41 +316,47 @@ def actualize_scrapper(code_list, codes_iol, dollar):
     """
      
     pointer_th = conector.cursor() 
-    scrapped = "SELECT symbol,amount FROM cedears"
+    scrapped = "SELECT symbol,amount FROM cedears"  # get the species to scrap // symbol serves as reference to the scraping functions, amount is used latter to calculate the real value of the portfolio
     pointer_th.execute(scrapped)
     existing_scrapped = pointer_th.fetchall()
     already_scrapped = []
     
     for scrap in existing_scrapped:
-        already_scrapped.append(scrap[0])
+        already_scrapped.append(scrap[0])  #fill the list
     
-    print(already_scrapped)    
+    #print(already_scrapped)    # Used for control
     urls_list = []
+       
     
-    
-    for symbol in already_scrapped:
-        urls_list.append("https://www.cohen.com.ar/Bursatil/Especie/"+symbol)
-    print("urls_list: ", urls_list)
+    # first try from the original web 
     try:
+        for symbol in already_scrapped:   # constructs the urls to pass as arguments in the scraping function
+            urls_list.append("https://www.cohen.com.ar/Bursatil/Especie/"+symbol)
+        #print("urls_list: ", urls_list)  # Control only
         data = comma_dot_cleaner(scrapper_kohen(urls_list,code_list))
+    
+    # Second option in case the conection failed or the scraping is impossible
     except:
         try:
-            print(already_scrapped)
+            #print(already_scrapped) # Control only
             data = comma_dot_cleaner(scrapper_iol(already_scrapped, codes_iol))
-            print(data)
+            #print(data)
+        
+        # Third and last option /// not prefered because it's not consistent in data contents with the previous two and generates incomplete information and may create issues on some options
         except:
-            print(already_scrapped)
-            data = comma_dot_cleaner(scrapper_piano(already_scrapped, []))
-    print("DATA: ",data)
+            #print(already_scrapped)   # Control only
+            data = comma_dot_cleaner(scrapper_piano(already_scrapped))
+    #print("DATA: ",data)   # Control only
     
-    for dat in data:
+    for dat in data:   # Scraped data is turn into information to be diplayed 
         updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
+        # Tuple of data is created and curated, all values in AR$ are turn into U$S on CCL exchange rate 
         setter = (dat[1], round(float(dat[2])/dollar, 2), dat[3], round(float(dat[4])/dollar,2), round(float(dat[5])/dollar, 2), dat[6], round(float(dat[7])/dollar,2), round(float(dat[8])/dollar,2), dat[0])
         pointer_th.execute(updater, setter)
         conector.commit()
         
-        update_total = "SELECT amount FROM cedears WHERE symbol = ?;"
-        pointer_th.execute(update_total, (dat[0],))
+        update_total = "SELECT amount FROM cedears WHERE symbol = ?;"   # 
+        pointer_th.execute(update_total, (dat[0],))  
         try:
             total_to_update = pointer_th.fetchall()[0][0]
             updater = "UPDATE cedears SET total = ? WHERE symbol = ?"
@@ -362,8 +378,12 @@ def partial_scrapper(new_specie, dollar, code_list, codes_iol):
     url = ["https://www.cohen.com.ar/Bursatil/Especie/"+new_specie]
     try:
         data = comma_dot_cleaner(scrapper_kohen(url, code_list))
-    except: 
-        data = comma_dot_cleaner(scrapper_iol([new_specie],codes_iol))
+    except:
+        try: 
+            data = comma_dot_cleaner(scrapper_iol([new_specie],codes_iol))
+        except:
+            data = comma_dot_cleaner(scrapper_piano([new_specie]))
+        
     
     for dat in data:
         #updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;" #outdated
@@ -397,9 +417,7 @@ def specie_loader(specie):
     pointer.execute(adding, to_add)
     conector.commit()
       
-"""def species_loader(species):   #temporal, used for testing
-    for sp in species:
-        specie_loader(sp)   """ 
+
     
 
 def comma_dot_cleaner(scrapped):
@@ -528,7 +546,7 @@ class Main_window(QMainWindow):
         
         self.table = QTableWidget(self)
         self.table.setGeometry(10,50,980,670)
-        self.column_names = ["Symbol", "Description", "Price", "Variation", "Opening $", "Closing $", "Volume", "Minimun $", "Maximun $", "Owned", "Holding $", "Del."]
+        self.column_names = ["Symbol", "Description", "Price", "Variation", "Opening$", "Closing$", "Volume", "Minimun$", "Maximun$", "Owned", "Holding$", "Del."]
         self.table.setColumnCount(len(self.column_names))
         self.table.setHorizontalHeaderLabels(self.column_names)
         
@@ -605,7 +623,7 @@ class Main_window(QMainWindow):
                 self.table.setItem(row, column, QTableWidgetItem(str(individual)))
                 column += 1
             delete_button = QPushButton("DEL.") # Delete button
-            delete_button.setFixedWidth(40)        
+            delete_button.setFixedWidth(35)        
             
             self.table.setCellWidget(row,11,delete_button)
             delete_button.clicked.connect(self.delete_specie)
