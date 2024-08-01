@@ -281,16 +281,20 @@ def scrapper_piano(species_list, codes_list):
     
     for specie in species_list:
         for cedear in cedear_list:
-            if cedear[0].text == specie:
+            data = (cedear.find_all("td"))
+            
+            if data[0].text == specie:
+                #print(specie)
                 info = []
-                info.append(cedear[0].text)
+                info.append(data[0].text)
                 info.append("No data")
-                info.append((cedear[5].text).replace("%",""))
-                info.append(cedear[1].text)
+                info.append(data[1].text)
+                info.append((data[5].text).replace("%",""))
                 info.append("0")
-                info.append(cedear[4].text)
-                info.append(cedear[3].text)
-                info.append(cedear[2].text)
+                info.append(data[4].text)
+                info.append("0")
+                info.append(data[3].text)
+                info.append(data[2].text)
         scrapped.append(info)
     
     return scrapped
@@ -766,6 +770,7 @@ if __name__ == "__main__":
     sys.exit(app.exec_())
     
    #print(comma_dot_cleaner(scrapper_iol(species, codes_list_iol)))
+   #print(scrapper_piano(species,{}))
    
    
     

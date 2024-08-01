@@ -21,13 +21,15 @@ req = requests.get(url3)
 soup = BeautifulSoup(req.text, 'html.parser')
 #print(soup)
 cedears_list = soup.tbody.find_all("tr")
+
 #print(cedears[1].find_all("td")[0].attrs)
 #print(cedears[1].find_all("td")[0]["title"])
 #print(cedears[1].find_all("td")[0].text)
 print(cedears_list[1].find_all("td")[-1].attrs)
 print(cedears_list[2].find_all("td"))
-for data in cedears_list[2].find_all("td"):
-    print(data.text)
+for cedear in cedears_list:
+    for data in cedear.find_all("td"):
+        print(data)
 #print(cedears[1].find_all("td")[-1]["title"])
 for cedear in cedears_list: pass
     #print(cedear)
