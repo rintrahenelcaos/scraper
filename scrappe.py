@@ -291,16 +291,20 @@ def scrapper_piano(species_list):
     
     for specie in species_list:  # Data is presented in a sequential block with little differentiation betwen each item so it's scraped by list index
         for cedear in cedear_list:
-            if cedear[0].text == specie:
+            data = (cedear.find_all("td"))
+            
+            if data[0].text == specie:
+                #print(specie)
                 info = []
-                info.append(cedear[0].text)
+                info.append(data[0].text)
                 info.append("No data")
-                info.append((cedear[5].text).replace("%",""))
-                info.append(cedear[1].text)
+                info.append(data[1].text)
+                info.append((data[5].text).replace("%",""))
                 info.append("0")
-                info.append(cedear[4].text)
-                info.append(cedear[3].text)
-                info.append(cedear[2].text)
+                info.append(data[4].text)
+                info.append("0")
+                info.append(data[3].text)
+                info.append(data[2].text)
         scrapped.append(info)
     
     return scrapped
@@ -355,14 +359,14 @@ def actualize_scrapper(code_list, codes_iol, dollar):
         pointer_th.execute(updater, setter)
         conector.commit()
         
-        update_total = "SELECT amount FROM cedears WHERE symbol = ?;"   # 
+        update_total = "SELECT amount FROM cedears WHERE symbol = ?;"   # Getting amount to update total value of portfolio
         pointer_th.execute(update_total, (dat[0],))  
         try:
             total_to_update = pointer_th.fetchall()[0][0]
             updater = "UPDATE cedears SET total = ? WHERE symbol = ?"
             setter = (round(total_to_update*float(dat[2])/dollar, 2), dat[0])
             pointer_th.execute(updater, setter)
-            conector.commit()
+            conector.commit()   # Update total value of stocks owned
         except: pass
 
 def partial_scrapper(new_specie, dollar, code_list, codes_iol):
@@ -373,7 +377,7 @@ def partial_scrapper(new_specie, dollar, code_list, codes_iol):
         dollar (float): CCL dollar exchange rate. Scrapped automatically
         code_list (list): codes to be scrapped. reference to class
     """
-    
+    # Works exactly like actualize_scrapper, only difference is that it adds a specie instead of update the values of existing ones
     pointer = conector.cursor()
     url = ["https://www.cohen.com.ar/Bursatil/Especie/"+new_specie]
     try:
@@ -388,6 +392,7 @@ def partial_scrapper(new_specie, dollar, code_list, codes_iol):
     for dat in data:
         #updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, lastoperation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;" #outdated
         updater = "UPDATE cedears SET description = ?, value = ?, variation = ?, opening = ?, closing = ?, volume = ?, minimun = ?, maximun = ? WHERE symbol = ?;"
+        # Tuple of data is created and curated, all values in AR$ are turn into U$S on CCL exchange rate 
         setter = (dat[1], round(float(dat[2])/dollar, 2), dat[3], round(float(dat[4])/dollar,2), round(float(dat[5])/dollar, 2), dat[6], round(float(dat[7])/dollar,2), round(float(dat[8])/dollar,2), dat[0])
         pointer.execute(updater, setter)
         conector.commit()
@@ -405,7 +410,7 @@ def partial_scrapper(new_specie, dollar, code_list, codes_iol):
         
     
 def specie_loader(specie):
-    """Loads new species to db
+    """Loads new species to db. Used when adding a new stock
 
     Args:
         specie (tuple): (identifying code of specie (str), amount owned (int))
@@ -449,7 +454,11 @@ def tableconstructor(conection):
     conection.commit()
 
 def total_holding():
-    
+    """ Calculates the total value of the portfolio
+
+    Returns:
+        float: total value
+    """
     pointer = conector.cursor()
     calculator = "SELECT SUM(total) FROM cedears;"
     pointer.execute(calculator)
@@ -466,30 +475,31 @@ def total_holding():
 
            
 class Updater(QObject):
-    """ Thread Class
+    """ Thread Class. Prevents the app from freezing when updating stock data
 
     Args:
         QObject (Qobject): Generic PyQt5 object
     """
     
-    updated = pyqtSignal()
-    progress = pyqtSignal()
-    retry = pyqtSignal()
-    failed = pyqtSignal()
+    updated = pyqtSignal()  # signals data is updated
+    progress = pyqtSignal()  # signals data is being updated, is launched every 30 minutes 
+    retry = pyqtSignal()    # if the update fails this is launched to try to fix it after 5 seconds
+    failed = pyqtSignal()      # after three trys it lauches indicating data is outdated
     
     def update(self):
-        
+        """ Manages the thread. Sets the timer that launches periodical updates
+        """
         timer = QtCore.QTimer(self) # Used to actualize data every 30 min
         timer.setInterval(1800000)
         #timer.setInterval(30000) testing only
-        timer.timeout.connect(self.timer_updater)
-        self.now = QtCore.QTime.currentTime()
+        timer.timeout.connect(self.timer_updater)  # launches the update after 30 min
+        self.now = QtCore.QTime.currentTime()   #used for indicating time of update
         print("initial load")
-        self.dollar = dollar_scrapper(dollar_urls)
-        actualize_scrapper(code_list, codes_list_iol,float(self.dollar))
-        self.updated.emit()
+        self.dollar = dollar_scrapper(dollar_urls)  # get the exchange rate
+        actualize_scrapper(code_list, codes_list_iol,float(self.dollar))    # update data
+        self.updated.emit()     # updated data signal emited
         print("initial load finished")
-        timer.start()
+        timer.start()   # initiates the countdown to update
         
     def timer_updater(self):
         """Data updater triggerer
@@ -497,10 +507,10 @@ class Updater(QObject):
         print(self.now.hour())
         if self.now.hour() < 9 or self.now.hour() > 15: pass  # no updates due to stock exchange hours
         else:
-            self.progress.emit()
+            self.progress.emit()   # sigmnals update in progress
             print("timer")
             timerint = QtCore.QTimer(self)
-            timerint.singleShot(1000,self.info_actualizer)
+            timerint.singleShot(1000,self.info_actualizer)  # launches data update
         
     
     def info_actualizer(self):
@@ -516,10 +526,10 @@ class Updater(QObject):
                 # restart ui
 
                 print("timerout")
-                self.updated.emit()
+                self.updated.emit()   # signals the update is finished
             except: 
                 self.retry.emit()
-                timer_retry = QtCore.QTimer(self) # Delay before retrying scrapping after 5 sec.
+                timer_retry = QtCore.QTimer(self)   # Delay before retrying scrapping after 5 sec.
                 timer_retry.singleShot(5000, self.info_actualizer)
                 retries += 1
         else: self.failed.emit()
@@ -546,44 +556,44 @@ class Main_window(QMainWindow):
         
         self.table = QTableWidget(self)
         self.table.setGeometry(10,50,980,670)
-        self.column_names = ["Symbol", "Description", "Price", "Variation", "Opening$", "Closing$", "Volume", "Minimun$", "Maximun$", "Owned", "Holding$", "Del."]
+        self.column_names = ["Symbol", "Description", "Price", "Variation", "Opening$", "Closing$", "Volume", "Minimun$", "Maximun$", "Owned", "Holding$", "Del."]  # creates the columns
         self.table.setColumnCount(len(self.column_names))
         self.table.setHorizontalHeaderLabels(self.column_names)
         
-        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.table.itemDoubleClicked.connect(lambda: self.mod_specie(self.table.currentRow()))
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # blocks individual changes in table cells
+        self.table.itemDoubleClicked.connect(lambda: self.mod_specie(self.table.currentRow()))  # allows to modify the amount of individual stocks owned by double-clicking
         
         self.dollar_label = QLabel(self)
         self.dollar_label.setGeometry(QtCore.QRect(10, 10, 200, 30))
-        self.dollar_label.setText("CCL-Dollar: $")
+        self.dollar_label.setText("CCL-Dollar: $")     # exchange rate indicator
         
         
         
-        self.specie_loader = QPushButton(self)
+        self.specie_loader = QPushButton(self)   # specie adding button
         self.specie_loader.setText("Add specie")
         self.specie_loader.setGeometry(QtCore.QRect(580, 10, 100, 30))
         self.specie_loader.clicked.connect(lambda: self.to_add_specie())
-        self.specie_loader.setEnabled(False)
+        self.specie_loader.setEnabled(False)   # blocked while first loading data
         
         
-        self.specie_combobox = QComboBox(self)
-        self.specie_combobox.addItems(cedears_list_scrapper())
+        self.specie_combobox = QComboBox(self)   # species to choose from
+        self.specie_combobox.addItems(cedears_list_scrapper())   
         self.specie_combobox.setGeometry(QtCore.QRect(700,10, 200, 30))
         
-        self.owned = QSpinBox(self)
+        self.owned = QSpinBox(self)  
         self.owned.setGeometry(QtCore.QRect(900, 10, 90, 30))
         
-        self.infolabel = QLabel(self)
+        self.infolabel = QLabel(self)   # Label to inform data updates
         self.infolabel.setGeometry(QtCore.QRect(10,760,600,30))
         self.infolabel.setText("Loading data, please wait")
         self.infolabel.setStyleSheet("color: red")
         
-        self.infolabel2 = QLabel(self)
+        self.infolabel2 = QLabel(self)  # Label with instructions
         self.infolabel2.setGeometry(QtCore.QRect(10,720,600,30))
         self.infolabel2.setText("To edit the amount owned, double click on the row")
         
         
-        self.total_hold = QLabel(self)
+        self.total_hold = QLabel(self)  # total value of portfolio label
         self.total_hold.setGeometry(QtCore.QRect(800,720,150,30))
         
         self.now = QtCore.QTime() 
@@ -593,22 +603,24 @@ class Main_window(QMainWindow):
         self.timed_update = Updater()
         self.timed_update.moveToThread(self.thread)
         self.thread.started.connect(self.timed_update.update)
-        self.timed_update.updated.connect(lambda: self.infolabel.setText("Data last updated: "+QtCore.QTime.toString(QtCore.QTime.currentTime())))
-        self.timed_update.updated.connect(lambda: self.info_actualizer())
-        self.timed_update.progress.connect(lambda: self.infolabel.setText("Updating data"))
+        self.timed_update.updated.connect(lambda: self.infolabel.setText("Data last updated: "+QtCore.QTime.toString(QtCore.QTime.currentTime())))  # bounding thread to label
+        self.timed_update.updated.connect(lambda: self.info_actualizer())   # launches changes in table so as to maintain it updated
+        self.timed_update.progress.connect(lambda: self.infolabel.setText("Updating data")) # informing situation
         self.timed_update.failed.connect(lambda: self.infolabel.setText("Failed to stablish connection with internet data after 5 attemps"))
         self.timed_update.retry.connect(lambda: self.infolabel2.setText("Failed connection, retrying"))
         
-        ######
+        ### stting table ##
         
         self.table.setWordWrap(True)
         self.table.resizeColumnsToContents()
         self.table.setColumnWidth(1, 360)
         self.show()
+        
+        ## Launch thread ##
         self.thread.start()
       
     def table_loader(self):
-        """Loads table from db
+        """Loads table from db. Used for update data in table
         """
         pointer = conector.cursor()
         loader = "SELECT * FROM cedears"
@@ -631,7 +643,7 @@ class Main_window(QMainWindow):
             row += 1
             
     def to_add_specie(self):
-        """Adds specie to db and table through adding specie
+        """Adds specie to db and table through adding_specie
         """
         already_scrapped = []
         pointer = conector.cursor()
@@ -643,15 +655,15 @@ class Main_window(QMainWindow):
             already_scrapped.append(scrp[0])
             
         if self.specie_combobox.currentText() == "" :
-            self.infolabel2.setText("Must choose a symbol to add")
+            self.infolabel2.setText("Must choose a symbol to add")   # prevents blank loading // accidental load 
             
         elif str(self.specie_combobox.currentText()) in already_scrapped:
-            self.infolabel2.setText("Specie "+str(self.specie_combobox.currentText())+" already in db")
+            self.infolabel2.setText("Specie "+str(self.specie_combobox.currentText())+" already in db")   # prevents duplicates of stocks
                                                                                                 
-        else: 
+        else:   # propper loading after checking for previous issues
             self.infolabel2.setText("Adding specie, please wait")
             timerint = QtCore.QTimer(self)
-            timerint.singleShot(1000, self.adding_specie)
+            timerint.singleShot(1000, self.adding_specie) ## leting some time pass to permit transsition
             
     def adding_specie(self):
         """Operates adding specie
@@ -766,7 +778,7 @@ class Main_window(QMainWindow):
         self.table_loader()
         self.total_hold.setText("Total holding: U$S"+str(total_holding()))
         self.specie_loader.setEnabled(True)
-        #self.infolabel.setText("Data updated")
+        
         print("info out")
         
 
@@ -783,7 +795,7 @@ if __name__ == "__main__":
     
     sys.exit(app.exec_())
     
-   #print(comma_dot_cleaner(scrapper_iol(species, codes_list_iol)))
+   
    
    
     
