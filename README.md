@@ -1,4 +1,4 @@
-# Web Scrapper.Scraps data from argentinian stock market trader webpages every 30 minutes. which is later used in a CRUD to calculate the actual value of a CEDEAR's portfolio and show it in  built on PyQt UI
+# Web Scrapper.
 
 CRUD with data obtained by web scrapping
 Scraps data from argentinian stock market trader webpage every 30 minutes which is later used in a CRUD to calculate the actual value of a CEDEAR's portfolio and show it in  built on PyQt UI
