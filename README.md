@@ -50,7 +50,7 @@ The app includes an existing db functioning as a test and example.
 ### Instructions
 
 
-![Screenshot of the UI with reference numbers in red](scarper2.png)
+![Screenshot of the UI with reference numbers in red](scraper2.png)
 
 
 Once launched, the app will immediately try to scrap the required information required in the db. Once loaded, it will be shown in the table. Symbol (1) represents the CEDEAR symbol as used in the stock exchange. Price (2) is the real U$S value corrected by the exchange rate (7). The amount of shares in the portfolio is presented in Holding (3) and the value of the holding in said share is represented in Holding$ (4).
