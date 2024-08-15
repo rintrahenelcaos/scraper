@@ -1,3 +1,9 @@
+######################################################
+### CEDEARs Web Scraper                           ####
+### Author: Leonardo Mario Mazzeo                 ####
+######################################################
+
+
 from bs4 import BeautifulSoup
 import requests
 
